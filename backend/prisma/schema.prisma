@@ -1,0 +1,211 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String                    @id @default(uuid())
+  email         String                    @unique
+  password      String?
+  userName      String                    @default("")
+  accessToken   String[]
+  refreshToken  String                    @default("")
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  deletedAt     DateTime?
+  conversations Conversation[]
+  hubSpotContactId  String?
+  initialInfos  ClientInitialPermitInfo[] // relation to ClientInitialInfo
+  platfromAccess Boolean?                  @default(false)
+}
+
+model Otp {
+  id                        String    @id @default(uuid())
+  email                     String    @unique
+  otp                       Int
+  forgotPasswordOtp         Boolean   @default(false)
+  forgotPasswordOtpExpireAt DateTime?
+  verified                  Boolean   @default(false)
+  expireAt                  DateTime
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  deletedAt                 DateTime?
+}
+
+
+enum WorkFlowStatus {
+  notStarted
+  started
+  sendEndingMessage
+  completed
+}
+model Conversation {
+  id          String                    @id @default(uuid())
+  title       String
+  userId      String? // optional foreign key
+  user        User?                     @relation(fields: [userId], references: [id])
+  ticketId    String?
+  messages    Question[] // one-to-many: a conversation can have multiple messages
+  clientInfos ClientInitialPermitInfo[] // relation to ClientInitialPermitInfo
+  workFlowStatus WorkFlowStatus         @default(started)
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  deletedAt   DateTime?
+}  
+
+enum QuestionType {
+  text
+  file
+  audio
+}
+
+enum conversationType {
+  AiChat
+  workflowChat
+}
+
+model Question {
+  id               String           @id @default(uuid())
+  conversationId   String
+  conversation     Conversation     @relation(fields: [conversationId], references: [id])
+  question         String
+  questionType     QuestionType     @default(text)
+  answer           String?
+  conversationType conversationType?
+  stepId   String?
+  step     Steps?      @relation(fields: [stepId], references: [id])
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  deletedAt        DateTime?
+  files            Files[]
+}
+
+model Faq {
+  id        String    @id @default(uuid())
+  question  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+// model SuggestedQuestions {
+//   id        String    @id @default(uuid())
+//   question  String
+//   createdAt DateTime  @default(now())
+//   updatedAt DateTime  @updatedAt
+//   deletedAt DateTime?
+// }
+
+model Files {
+  id            String    @id @default(uuid())
+  questionId    String
+  question      Question  @relation(fields: [questionId], references: [id])
+  fileName      String
+  fileUrl       String
+  fileType      String
+  fileExtension String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+}
+
+model WorkFlow {
+  id          String                    @id @default(uuid())
+  name        String
+  status      String
+  steps       Steps[]                   @relation("WorkflowSteps") // steps belonging to workflow
+  clientInfos ClientInitialPermitInfo[] // client infos per workflow
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  deletedAt   DateTime?
+}
+
+model Steps {
+  id                      String                    @id @default(uuid())
+  no                      Int
+  name                    String
+  promptText              String
+  questionOptions         String[]
+  workflowId              String
+  clientAnswerType        ClientAnswerType?
+  workflow                WorkFlow                  @relation("WorkflowSteps", fields: [workflowId], references: [id])
+  clientInfos             ClientInitialPermitInfo[] // clients associated with this step
+  requiredPreviousStepAns Boolean?                  @default(false)
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  deletedAt               DateTime?
+  questions               Question[]
+  stepOption              StepOption[]
+}
+
+enum ClientAnswerType {
+  singleInput
+  fileInput
+  multipleInput
+}
+
+model StepOption {
+  id              String    @id @default(uuid())
+  stepId          String
+  step            Steps     @relation(fields: [stepId], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+  stepOptionArray String[]
+}
+
+
+model PermitInitialInfo {
+  id                 String    @id @default(uuid())
+  permitFileURl      String?
+  projectLocation    String?
+  buildingType       String?
+  buildingUseCase    String?
+  buildingSquareFeet String?
+  stageOfDesign      String
+  buildingStory      String
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+}
+
+model ClientInitialPermitInfo {
+  id             String        @id @default(uuid())
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id])
+  stepId         String
+  step           Steps         @relation(fields: [stepId], references: [id])
+  stepNumber     Int?
+  workflowId     String?
+  workflow       WorkFlow?     @relation(fields: [workflowId], references: [id])
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
+  aiQuestion     String?
+  clientAns      String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+}
+
+model AllowedDomains {
+  id            String                    @id @default(uuid())
+  domain        String                    @unique
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  deletedAt     DateTime?
+}
+
+model Contact {
+  id            String                    @id @default(uuid())
+  email         String                    @unique
+  fullName      String?
+  phoneNumber   String?
+  message       String?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  deletedAt     DateTime?
+}

@@ -1,0 +1,331 @@
+{
+  "info": {
+    "name": "WhatsApp Relay - Twilio Conversations API",
+    "description": "Complete API collection for WhatsApp Client-Agent relay system using Twilio Conversations API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:3000",
+      "type": "string"
+    },
+    {
+      "key": "conversation_sid",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "message_sid",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "media_sid",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health & Status",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health"]
+            },
+            "description": "Check if the API is running and healthy"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Conversations",
+      "item": [
+        {
+          "name": "List All Conversations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/conversations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations"]
+            },
+            "description": "Get a list of all active conversations between clients and agents"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Save first conversation SID for other requests",
+                  "const response = pm.response.json();",
+                  "if (response.success && response.conversations.length > 0) {",
+                  "    pm.collectionVariables.set('conversation_sid', response.conversations[0].sid);",
+                  "    console.log('Saved conversation SID:', response.conversations[0].sid);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Conversation Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conversation_sid}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conversation_sid}}"]
+            },
+            "description": "Get detailed information about a specific conversation including participants and recent messages"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Conversation Messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conversation_sid}}/messages?limit=50",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "conversations",
+                "{{conversation_sid}}",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Number of messages to retrieve (default: 50)"
+                }
+              ]
+            },
+            "description": "Get message history for a specific conversation"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Conversation & Unlink",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/{{conversation_sid}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "{{conversation_sid}}"]
+            },
+            "description": "Delete a conversation from Twilio and remove the client-agent mapping. Useful for testing and cleanup."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Client-Agent Mappings (Debug)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/conversations/debug/mappings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "conversations", "debug", "mappings"]
+            },
+            "description": "Get current client-agent mappings from memory. Useful for debugging routing issues."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Media",
+      "item": [
+        {
+          "name": "Get Media File (Image/Video/Doc)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/media/{{conversation_sid}}/{{message_sid}}/{{media_sid}}",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "media",
+                "{{conversation_sid}}",
+                "{{message_sid}}",
+                "{{media_sid}}"
+              ]
+            },
+            "description": "Get the actual media file (image, video, document). This endpoint acts as a proxy and requires no authentication from the frontend."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Media Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/media/{{conversation_sid}}/{{message_sid}}/{{media_sid}}/info",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "media",
+                "{{conversation_sid}}",
+                "{{message_sid}}",
+                "{{media_sid}}",
+                "info"
+              ]
+            },
+            "description": "Get metadata about a media file without downloading it"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Webhooks (Testing)",
+      "item": [
+        {
+          "name": "Simulate Client Message (Text)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "From",
+                  "value": "whatsapp:+923044672507",
+                  "description": "Client phone number"
+                },
+                {
+                  "key": "Body",
+                  "value": "Hello, I need help with my permit application",
+                  "description": "Message text"
+                },
+                {
+                  "key": "NumMedia",
+                  "value": "0",
+                  "description": "Number of media attachments"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/webhooks/twilio/whatsapp",
+              "host": ["{{base_url}}"],
+              "path": ["api", "webhooks", "twilio", "whatsapp"]
+            },
+            "description": "Simulate a text message from the client to test routing to agent"
+          },
+          "response": []
+        },
+        {
+          "name": "Simulate Agent Reply (Text)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "From",
+                  "value": "whatsapp:+923124898556",
+                  "description": "Agent phone number"
+                },
+                {
+                  "key": "Body",
+                  "value": "Hi! I'd be happy to help you with that. What type of permit do you need?",
+                  "description": "Message text"
+                },
+                {
+                  "key": "NumMedia",
+                  "value": "0",
+                  "description": "Number of media attachments"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/webhooks/twilio/whatsapp",
+              "host": ["{{base_url}}"],
+              "path": ["api", "webhooks", "twilio", "whatsapp"]
+            },
+            "description": "Simulate a text message from the agent to test routing back to client"
+          },
+          "response": []
+        },
+        {
+          "name": "Simulate Message with Media",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "From",
+                  "value": "whatsapp:+923044672507",
+                  "description": "Client phone number"
+                },
+                {
+                  "key": "Body",
+                  "value": "Here's the floor plan",
+                  "description": "Message text (caption)"
+                },
+                {
+                  "key": "NumMedia",
+                  "value": "1",
+                  "description": "Number of media attachments"
+                },
+                {
+                  "key": "MediaUrl0",
+                  "value": "https://api.twilio.com/2010-04-01/Accounts/ACxxxx/Messages/MMxxxx/Media/MExxxx",
+                  "description": "URL of first media file"
+                },
+                {
+                  "key": "MediaContentType0",
+                  "value": "image/jpeg",
+                  "description": "Content type of first media file"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/webhooks/twilio/whatsapp",
+              "host": ["{{base_url}}"],
+              "path": ["api", "webhooks", "twilio", "whatsapp"]
+            },
+            "description": "Simulate a message with media attachment (image, video, document)"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
