@@ -368,12 +368,13 @@ export async function getProjectInfoFromFile(
     const systemMessage = `You are a knowledgeable assistant specializing in the US permit process. Always respond with ONLY a valid JSON object, without any markdown formatting, code blocks, or additional text.`;
 
     const response = await openai.responses.create({
-      model: model || "gpt-4.1-mini",
+      model: model || "",
       input: [
         { role: "system", content: systemMessage },
         { role: "user", content },
       ],
     });
+        console.log("🚀 ~ getProjectInfoFromFile ~ content:", content)
 
    // console.log("Assistant response:", response.output_text);
 
