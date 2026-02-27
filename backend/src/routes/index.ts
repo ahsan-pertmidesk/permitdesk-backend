@@ -12,6 +12,8 @@ import conversationsRoutes from "../modules/conversations/conversation.routes";
 import initialWorkFlowQuestionRoutes from "../modules/initialWorkFlow/initialWorkFlow.routes"
 import { storageRoutes } from "../modules/uploder/presignedUrl.routes";
 import contactRoutes from "../modules/contact/contact.routes";
+import permitApplicationsRoutes from "../modules/permitApplicationsCatalog/permitApplicationsCatalog.routes";
+import projectRoutes from "../modules/project/project.routes";
 
 const router = Router();
 router.use("/health", health);
@@ -28,6 +30,7 @@ router.use("/conversation", conversationsRoutes);
 router.use("/storage", storageRoutes);
 router.use("/initial-work-flow-question", initialWorkFlowQuestionRoutes);
 router.use("/contacts", contactRoutes);
-
+router.use("/permit-applications", permitApplicationsRoutes);
+router.use("/projects", projectRoutes);
 
 export default router;

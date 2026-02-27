@@ -209,3 +209,46 @@ model Contact {
   updatedAt     DateTime                  @updatedAt
   deletedAt     DateTime?
 }
+
+model PermitApplicationsCatalog {
+  id                 String   @id @default(uuid())
+  city               String
+  state              String
+  applicationNames   String[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+  @@unique([state, city])
+}
+
+enum ProjectApplicationStatus {
+  not_started
+  in_progress
+  under_review
+  approved
+  failed
+}
+
+model Project {
+  id                 String               @id @default(uuid())
+  name               String
+  email              String               @unique
+  password           String
+  state              String
+  city               String
+  projectApplications ProjectApplication[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  deletedAt          DateTime?
+}
+
+model ProjectApplication {
+  id        String                   @id @default(uuid())
+  projectId String
+  project   Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  status    ProjectApplicationStatus @default(not_started)
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+  deletedAt DateTime?
+}

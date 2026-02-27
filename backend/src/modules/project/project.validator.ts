@@ -1,0 +1,78 @@
+import Joi from 'joi';
+
+const passwordValidationRule = Joi.string()
+  .min(8)
+  .max(30)
+  .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])'))
+  .messages({
+    'string.min': 'Password must be at least 8 characters long',
+    'string.max': 'Password cannot exceed 30 characters',
+    'string.pattern.base':
+      'Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character',
+  });
+
+const passwordRequiredRule = passwordValidationRule.required().messages({
+  'string.empty': 'Password is required',
+  'any.required': 'Password is required',
+});
+
+export const createProjectSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(255).required().messages({
+    'string.empty': 'Name is required',
+    'any.required': 'Name is required',
+  }),
+  email: Joi.string()
+    .email({ minDomainSegments: 2 })
+    .trim()
+    .required()
+    .messages({
+      'string.email': 'Email must be a valid email address',
+      'string.empty': 'Email is required',
+      'any.required': 'Email is required',
+    }),
+  password: passwordRequiredRule,
+  state: Joi.string().trim().min(1).max(255).required().messages({
+    'string.empty': 'State is required',
+    'any.required': 'State is required',
+  }),
+  city: Joi.string().trim().min(1).max(255).required().messages({
+    'string.empty': 'City is required',
+    'any.required': 'City is required',
+  }),
+});
+
+const emailValidationRule = Joi.string()
+  .email({ minDomainSegments: 2 })
+  .trim()
+  .messages({
+    'string.email': 'Email must be a valid email address',
+  });
+
+/** Edit project: name required; email and password optional */
+export const updateProjectSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(255).required().messages({
+    'string.empty': 'Name is required',
+    'any.required': 'Name is required',
+  }),
+  email: emailValidationRule.optional(),
+  password: passwordValidationRule.optional(),
+});
+
+const projectApplicationStatuses = ['not_started', 'in_progress', 'under_review', 'approved', 'failed'];
+
+/** List projects query: search, date range, application status filter */
+export const listProjectsQuerySchema = Joi.object({
+  search: Joi.string().trim().max(255).optional().allow(''),
+  dateFrom: Joi.date().iso().optional().messages({
+    'date.format': 'dateFrom must be a valid ISO date (e.g. YYYY-MM-DD)',
+  }),
+  dateTo: Joi.date().iso().optional().messages({
+    'date.format': 'dateTo must be a valid ISO date (e.g. YYYY-MM-DD)',
+  }),
+  status: Joi.string()
+    .valid(...projectApplicationStatuses)
+    .optional()
+    .messages({
+      'any.only': `status must be one of: ${projectApplicationStatuses.join(', ')}`,
+    }),
+});

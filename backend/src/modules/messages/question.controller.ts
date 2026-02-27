@@ -9,9 +9,9 @@ import { createConversation } from '../conversations/conversation.controller';
 import { generateAnswerStreamForFileAndText } from '../utils/index';
 import {downloadFilePresignedUrl, getFilePresignedUrl} from "../../utils/s3"
 import {OPENAI_API_KEY,RESPONSE_GENERATOR_MODEL ,VOICE_TO_TEXT_MODEL,FOLDER_ID,FRONTEND_URL} from "../../config/variables"
-import {getInitialWorkFlowQuestionByUserId,saveInitialWorkFlowAns,uploadDocumentAndExtractInfo,
+import {getInitialWorkFlowQuestionByUserId, saveInitialWorkFlowAns, uploadDocumentAndExtractInfo,
   getJsonResponseFromClientPrompt
-} from "../initialWorkFlow/initialWorkFlow.controller"
+} from "../initialWorkFlow/initialWorkFlow.service"
 import { createHubSpotTicket, uploadFileFromS3AndAttachToTicket, importFileFromUrlAndAttachToTicket, attachFileToTicket, attachFileIdToTicket, addChatUrlNoteToTicket } from '../hubspot/hubspot.service';
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
@@ -52,7 +52,15 @@ export const createQuestionStream = catchAsync(async (req, res, next) => {
   let fileData:any = workFlowStepData?.fileData
   
   if(workFlowStepData?.clientAnswerData){
-    await saveInitialWorkFlowAns(userId,stepId,workflowId,conversationId,clientAnswer,aiQuestion,fileData)
+    await saveInitialWorkFlowAns({
+      userId,
+      stepId,
+      workflowId,
+      conversationId,
+      clientAnswer,
+      aiQuestion: aiQuestion ?? '',
+      fileUrls: fileData ?? undefined,
+    })
   }
 
   if(question){
