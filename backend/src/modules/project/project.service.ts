@@ -49,11 +49,11 @@ export async function createProject(input: CreateProjectInput): Promise<ProjectR
     await ProjectApplicationQuery.createMany(applicationRecords);
   }
 
-  const { password: _, email: __, ...record } = project;
+  const { password: _, ...record } = project;
   return record as ProjectRecord;
 }
 
-/** Select for list / create / update responses (no email, no password) */
+/** Select for create/update responses (no email, no password) */
 const projectSelectForList = {
   id: true,
   name: true,
@@ -63,6 +63,12 @@ const projectSelectForList = {
   createdAt: true,
   updatedAt: true,
   deletedAt: true,
+};
+
+/** Select for list only: same as above + email */
+const projectSelectForListWithEmail = {
+  ...projectSelectForList,
+  email: true,
 };
 
 /** Select for get-by-id only (includes email and plain password) */
@@ -147,9 +153,9 @@ function buildListWhere(filters: ListProjectsFilters): Record<string, unknown> {
   return where;
 }
 
-/** Select for list with applications (use select only; Prisma does not allow select + include) */
+/** Select for list with applications and email (use select only; Prisma does not allow select + include) */
 const projectSelectForListWithApplications = {
-  ...projectSelectForList,
+  ...projectSelectForListWithEmail,
   projectApplications: {
     where: { deletedAt: null },
     select: { id: true, name: true, status: true },

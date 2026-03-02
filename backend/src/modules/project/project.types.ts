@@ -16,13 +16,14 @@ export interface CreateProjectInput {
   city: string;
 }
 
-/** Project response when email/password are excluded (create, update, list) */
+/** Project response (create/update exclude email; list includes email) */
 export interface ProjectRecord {
   id: string;
   name: string;
   platformName: string;
   state: string;
   city: string;
+  email?: string;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
