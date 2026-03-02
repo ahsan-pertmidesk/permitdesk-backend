@@ -9,17 +9,18 @@ import type {
   ProjectDetail,
   ProjectApplicationItem,
   ListProjectsFilters,
+  PaginatedProjects,
 } from './project.types';
 
 const ProjectQuery = new DBQuery('Project');
 const ProjectApplicationQuery = new DBQuery('ProjectApplication');
 
 /**
- * Create a project: validate state+city exists in catalog, create project (password stored as-is),
- * then store each catalog application as ProjectApplication with status 'not_started'.
+ * Create a project: validate state+city exists in catalog, create project (password stored as-is).
+ * Multiple projects can use the same email; no duplicate-email check.
  */
 export async function createProject(input: CreateProjectInput): Promise<ProjectRecord> {
-  const { name, email, password, state, city } = input;
+  const { name, platformName = '', email, password, state, city } = input;
 
   const catalog = await getPermitApplicationByStateAndCity(state, city);
   if (!catalog) {
@@ -30,13 +31,9 @@ export async function createProject(input: CreateProjectInput): Promise<ProjectR
     );
   }
 
-  await ProjectQuery.checkDuplicateWithNonUniqueWithDeleted(
-    { email },
-    'A project with this email already exists'
-  );
-
   const project = await ProjectQuery.createData({
     name,
+    platformName: (platformName ?? '').trim(),
     email,
     password,
     state: catalog.state,
@@ -60,6 +57,7 @@ export async function createProject(input: CreateProjectInput): Promise<ProjectR
 const projectSelectForList = {
   id: true,
   name: true,
+  platformName: true,
   state: true,
   city: true,
   createdAt: true,
@@ -71,6 +69,7 @@ const projectSelectForList = {
 const projectSelectForGetById = {
   id: true,
   name: true,
+  platformName: true,
   email: true,
   password: true,
   state: true,
@@ -94,21 +93,12 @@ export async function updateProject(
   );
   if (!existing) return null;
 
-  const updateData: { name: string; email?: string; password?: string } = { name: input.name };
-  if (input.email !== undefined) {
-    const otherWithEmail = await ProjectQuery.findOneByQuery(
-      { email: input.email.trim(), deletedAt: null },
-      undefined,
-      { id: true }
-    );
-    if (otherWithEmail && (otherWithEmail as any).id !== projectId) {
-      throw new CustomError('A project with this email already exists', 409, false);
-    }
-    updateData.email = input.email.trim();
-  }
-  if (input.password !== undefined) {
-    updateData.password = input.password;
-  }
+  const updateData: { name: string; platformName?: string; email?: string; password?: string } = {
+    name: input.name,
+  };
+  if (input.platformName !== undefined) updateData.platformName = input.platformName.trim();
+  if (input.email !== undefined) updateData.email = input.email.trim();
+  if (input.password !== undefined) updateData.password = input.password;
 
   await ProjectQuery.getByQueryAndUpdate({ id: projectId }, updateData);
   const updated = await ProjectQuery.findOneByQuery(
@@ -166,21 +156,45 @@ const projectSelectForListWithApplications = {
   },
 };
 
+const DEFAULT_LIMIT = 9;
+const DEFAULT_PAGE = 1;
+
 /**
- * List projects with optional filters: search, date range, application status. No email, no password.
+ * List projects with optional filters and pagination. Limit default 9. No email, no password.
  */
-export async function listProjects(filters: ListProjectsFilters = {}): Promise<ProjectWithApplications[]> {
+export async function listProjects(filters: ListProjectsFilters = {}): Promise<PaginatedProjects> {
   const where = buildListWhere(filters);
-  const projects = await ProjectQuery.findMany(
-    where,
-    { createdAt: 'desc' },
-    projectSelectForListWithApplications
-  );
-  return (projects as any[]).map((p) => ({
+  const page = Math.max(1, Math.floor(Number(filters.page)) || DEFAULT_PAGE);
+  const limit = Math.min(100, Math.max(1, Math.floor(Number(filters.limit)) || DEFAULT_LIMIT));
+  const skip = (page - 1) * limit;
+
+  const [projects, total] = await Promise.all([
+    ProjectQuery.findMany(
+      where,
+      { createdAt: 'desc' },
+      projectSelectForListWithApplications,
+      undefined,
+      skip,
+      undefined,
+      undefined,
+      limit
+    ),
+    ProjectQuery.countWithDelete(where),
+  ]);
+
+  const data = (projects as any[]).map((p) => ({
     ...p,
     applications: (p.projectApplications ?? []).map(mapToApplicationItem),
     projectApplications: undefined,
   })) as ProjectWithApplications[];
+
+  return {
+    data,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit) || 1,
+  };
 }
 
 /** Select for get-by-id with applications (use select only; Prisma does not allow select + include) */
@@ -207,6 +221,7 @@ export async function getProjectById(id: string): Promise<ProjectDetail | null> 
   return {
     id: p.id,
     name: p.name,
+    platformName: p.platformName ?? '',
     email: p.email,
     password: p.password ?? '',
     state: p.state,

@@ -5,8 +5,8 @@ import type { CreateProjectInput, UpdateProjectInput, ListProjectsFilters } from
 
 /**
  * POST /projects
- * Create a project (name, email, password, state, city).
- * State+city must exist in permit applications catalog; project gets all applications for that city.
+ * Create a project (name, platformName?, email, password, state, city).
+ * Multiple projects can use the same email. State+city must exist in catalog.
  */
 export const createProjectHandler = catchAsync(async (req, res) => {
   const data = req.body as CreateProjectInput;
@@ -18,7 +18,8 @@ export const createProjectHandler = catchAsync(async (req, res) => {
 
 /**
  * GET /projects
- * List projects with optional query: search, dateFrom, dateTo, status.
+ * List projects with optional query: search, dateFrom, dateTo, status, page, limit (default 9).
+ * Returns paginated result: { data, total, page, limit, totalPages }.
  */
 export const getProjectsHandler = catchAsync(async (req, res) => {
   const filters: ListProjectsFilters = {
@@ -26,11 +27,13 @@ export const getProjectsHandler = catchAsync(async (req, res) => {
     dateFrom: req.query.dateFrom as string | undefined,
     dateTo: req.query.dateTo as string | undefined,
     status: req.query.status as ListProjectsFilters['status'],
+    page: req.query.page !== undefined ? Number(req.query.page) : undefined,
+    limit: req.query.limit !== undefined ? Number(req.query.limit) : undefined,
   };
-  const projects = await listProjects(filters);
+  const result = await listProjects(filters);
   return res
     .status(200)
-    .json(new ApiResponse(200, 'Projects retrieved successfully', projects));
+    .json(new ApiResponse(200, 'Projects retrieved successfully', result));
 });
 
 /**

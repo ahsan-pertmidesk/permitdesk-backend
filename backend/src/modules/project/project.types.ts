@@ -1,6 +1,7 @@
-/** Input for updating a project (name required; email and password optional) */
+/** Input for updating a project (name required; email, password, platformName optional) */
 export interface UpdateProjectInput {
   name: string;
+  platformName?: string;
   email?: string;
   password?: string;
 }
@@ -8,6 +9,7 @@ export interface UpdateProjectInput {
 /** Input for creating a project */
 export interface CreateProjectInput {
   name: string;
+  platformName?: string;
   email: string;
   password: string;
   state: string;
@@ -18,11 +20,21 @@ export interface CreateProjectInput {
 export interface ProjectRecord {
   id: string;
   name: string;
+  platformName: string;
   state: string;
   city: string;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
+}
+
+/** Paginated list response */
+export interface PaginatedProjects {
+  data: ProjectWithApplications[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 /** Project with applications, no email (list response) */
@@ -44,10 +56,12 @@ export interface ProjectApplicationItem {
   status: 'not_started' | 'in_progress' | 'under_review' | 'approved' | 'failed';
 }
 
-/** Query filters for list projects */
+/** Query filters and pagination for list projects */
 export interface ListProjectsFilters {
   search?: string;
   dateFrom?: string;
   dateTo?: string;
   status?: 'not_started' | 'in_progress' | 'under_review' | 'approved' | 'failed';
+  page?: number;
+  limit?: number;
 }

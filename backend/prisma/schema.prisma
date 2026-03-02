@@ -232,7 +232,8 @@ enum ProjectApplicationStatus {
 model Project {
   id                 String               @id @default(uuid())
   name               String
-  email              String               @unique
+  platformName         String             @default("")
+  email              String
   password           String
   state              String
   city               String
