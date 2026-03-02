@@ -1,17 +1,7 @@
 import Joi from 'joi';
 
-const passwordValidationRule = Joi.string()
-  .min(8)
-  .max(30)
-  .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])'))
-  .messages({
-    'string.min': 'Password must be at least 8 characters long',
-    'string.max': 'Password cannot exceed 30 characters',
-    'string.pattern.base':
-      'Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character',
-  });
-
-const passwordRequiredRule = passwordValidationRule.required().messages({
+/** Password: required only, no format/length rules */
+const passwordRequired = Joi.string().trim().required().messages({
   'string.empty': 'Password is required',
   'any.required': 'Password is required',
 });
@@ -31,7 +21,7 @@ export const createProjectSchema = Joi.object({
       'string.empty': 'Email is required',
       'any.required': 'Email is required',
     }),
-  password: passwordRequiredRule,
+  password: passwordRequired,
   state: Joi.string().trim().min(1).max(255).required().messages({
     'string.empty': 'State is required',
     'any.required': 'State is required',
@@ -57,7 +47,7 @@ export const updateProjectSchema = Joi.object({
   }),
   platformName: Joi.string().trim().max(255).optional().allow(''),
   email: emailValidationRule.optional(),
-  password: passwordValidationRule.optional(),
+  password: Joi.string().trim().optional(),
 });
 
 const projectApplicationStatuses = ['not_started', 'in_progress', 'under_review', 'approved', 'failed'];

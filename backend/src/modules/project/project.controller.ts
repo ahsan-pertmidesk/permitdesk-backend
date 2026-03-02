@@ -5,8 +5,8 @@ import type { CreateProjectInput, UpdateProjectInput, ListProjectsFilters } from
 
 /**
  * POST /projects
- * Create a project (name, platformName?, email, password, state, city).
- * Multiple projects can use the same email. State+city must exist in catalog.
+ * Create a project (name, platformName?, email, password required, state, city).
+ * Password: required only, no format validation. State+city must exist in catalog.
  */
 export const createProjectHandler = catchAsync(async (req, res) => {
   const data = req.body as CreateProjectInput;

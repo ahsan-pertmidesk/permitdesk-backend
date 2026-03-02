@@ -6,7 +6,7 @@ export interface UpdateProjectInput {
   password?: string;
 }
 
-/** Input for creating a project */
+/** Input for creating a project. Password is required (no format/length validation). */
 export interface CreateProjectInput {
   name: string;
   platformName?: string;
