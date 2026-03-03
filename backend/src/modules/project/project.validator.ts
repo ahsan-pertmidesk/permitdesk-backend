@@ -11,7 +11,6 @@ export const createProjectSchema = Joi.object({
     'string.empty': 'Name is required',
     'any.required': 'Name is required',
   }),
-  platformName: Joi.string().trim().max(255).optional().allow('').default(''),
   email: Joi.string()
     .email({ minDomainSegments: 2 })
     .trim()
@@ -39,36 +38,46 @@ const emailValidationRule = Joi.string()
     'string.email': 'Email must be a valid email address',
   });
 
-/** Edit project: name required; platformName, email and password optional */
+/** Edit project: name required; email and password optional */
 export const updateProjectSchema = Joi.object({
   name: Joi.string().trim().min(1).max(255).required().messages({
     'string.empty': 'Name is required',
     'any.required': 'Name is required',
   }),
-  platformName: Joi.string().trim().max(255).optional().allow(''),
   email: emailValidationRule.optional(),
   password: Joi.string().trim().optional(),
 });
 
-const projectApplicationStatuses = ['not_started', 'in_progress', 'under_review', 'approved', 'failed'];
+export const projectApplicationStatuses = ['not_started', 'in_progress', 'under_review', 'approved', 'failed'] as const;
+
+const dateFilterPresets = ['today', 'last_7_days', 'last_30_days'] as const;
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 9;
 
-/** List projects query: search, date range, status filter, pagination (limit default 9) */
+/** List projects query: search, dateFilter preset, multi-select status, pagination (limit default 9) */
 export const listProjectsQuerySchema = Joi.object({
   search: Joi.string().trim().max(255).optional().allow(''),
-  dateFrom: Joi.date().iso().optional().messages({
-    'date.format': 'dateFrom must be a valid ISO date (e.g. YYYY-MM-DD)',
-  }),
-  dateTo: Joi.date().iso().optional().messages({
-    'date.format': 'dateTo must be a valid ISO date (e.g. YYYY-MM-DD)',
-  }),
-  status: Joi.string()
-    .valid(...projectApplicationStatuses)
+  dateFilter: Joi.string()
+    .valid(...dateFilterPresets)
     .optional()
     .messages({
-      'any.only': `status must be one of: ${projectApplicationStatuses.join(', ')}`,
+      'any.only': `dateFilter must be one of: ${dateFilterPresets.join(', ')}`,
+    }),
+  status: Joi.alternatives()
+    .try(
+      Joi.string().valid(...projectApplicationStatuses),
+      Joi.string().custom((value: string) => {
+        const parts = value.split(',').map((s) => s.trim()).filter(Boolean);
+        const invalid = parts.filter((p) => !projectApplicationStatuses.includes(p as any));
+        if (invalid.length > 0) throw new Error(`Invalid status: ${invalid.join(', ')}. Must be one of: ${projectApplicationStatuses.join(', ')}`);
+        return value;
+      }),
+      Joi.array().items(Joi.string().valid(...projectApplicationStatuses)).min(1)
+    )
+    .optional()
+    .messages({
+      'any.only': `Each status must be one of: ${projectApplicationStatuses.join(', ')}`,
     }),
   page: Joi.number().integer().min(1).optional().default(DEFAULT_PAGE),
   limit: Joi.number().integer().min(1).max(100).optional().default(DEFAULT_LIMIT),

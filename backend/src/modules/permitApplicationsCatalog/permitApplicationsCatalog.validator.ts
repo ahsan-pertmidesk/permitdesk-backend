@@ -9,6 +9,7 @@ export const createPermitApplicationSchema = Joi.object({
     'string.empty': 'State is required',
     'any.required': 'State is required',
   }),
+  platformName: Joi.string().trim().max(255).optional().allow('').default(''),
   applicationNames: Joi.array().items(Joi.string().trim().min(1)).min(0).required().messages({
     'array.base': 'Application names must be an array',
     'any.required': 'Application names is required',
@@ -16,10 +17,10 @@ export const createPermitApplicationSchema = Joi.object({
 });
 
 export const updatePermitApplicationSchema = Joi.object({
-  applicationNames: Joi.array().items(Joi.string().trim().min(1)).min(0).required().messages({
+  applicationNames: Joi.array().items(Joi.string().trim().min(1)).min(0).optional().messages({
     'array.base': 'Application names must be an array',
-    'any.required': 'Application names is required',
   }),
+  platformName: Joi.string().trim().max(255).optional().allow(''),
 });
 
 export const stateCityQuerySchema = Joi.object({

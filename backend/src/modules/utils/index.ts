@@ -1,11 +1,40 @@
 import OpenAI from "openai";
+import { PDFDocument, type PDFPage } from "pdf-lib";
 import {
   OPENAI_API_KEY,
   RESPONSE_GENERATOR_MODEL,
 } from "../../config/variables";
-import { downloadFilePresignedUrl } from "../../utils/s3";
+import {
+  downloadFilePresignedUrl,
+  getFileBufferFromS3,
+} from "../../utils/s3";
 
 import fs from "fs";
+
+/** Maximum number of PDF pages to send to the model (initial workflow upload). */
+const MAX_PAGES_FOR_MODEL = 5;
+
+/**
+ * If the buffer is a PDF with more than maxPages pages, returns a new PDF with only the first maxPages pages.
+ * Otherwise returns the original buffer.
+ */
+async function limitPdfToFirstNPages(
+  buffer: Buffer,
+  maxPages: number
+): Promise<Buffer> {
+  try {
+    const src = await PDFDocument.load(buffer, { ignoreEncryption: true });
+    const pageCount = src.getPageCount();
+    if (pageCount <= maxPages) return buffer;
+    const pageIndices = Array.from({ length: maxPages }, (_, i) => i);
+    const newPdf = await PDFDocument.create();
+    const copied = await newPdf.copyPages(src, pageIndices);
+    copied.forEach((p: PDFPage) => newPdf.addPage(p));
+    return Buffer.from(await newPdf.save());
+  } catch {
+    return buffer;
+  }
+}
 const openai = new OpenAI({
   apiKey: OPENAI_API_KEY,
 });
@@ -350,21 +379,35 @@ Original question:
 export async function getProjectInfoFromFile(
   question: string,
   model: any,
-  clientPrompt:string,
+  clientPrompt: string,
   fileFields?: any,
 ): Promise<any> {
   try {
     const openai = new OpenAI();
 
     let content: any[] = [{ type: "input_text", text: question }];
-   if(fileFields){
-     let url = await downloadFilePresignedUrl(fileFields);
-     content.push({ type: "input_file", file_url: url });
-   }
-   if(clientPrompt){
-     content.push({ type: "input_text", text: clientPrompt});
-   }
-    
+    if (fileFields) {
+      const isPdf =
+        typeof fileFields === "string" &&
+        fileFields.toLowerCase().endsWith(".pdf");
+      if (isPdf) {
+        const buffer = await getFileBufferFromS3(fileFields);
+        const truncated = await limitPdfToFirstNPages(buffer, MAX_PAGES_FOR_MODEL);
+        const dataUrl = `data:application/pdf;base64,${truncated.toString("base64")}`;
+        content.push({
+          type: "input_file",
+          file_data: dataUrl,
+          filename: "document.pdf",
+        });
+      } else {
+        const url = await downloadFilePresignedUrl(fileFields);
+        content.push({ type: "input_file", file_url: url });
+      }
+    }
+    if (clientPrompt) {
+      content.push({ type: "input_text", text: clientPrompt });
+    }
+
     const systemMessage = `You are a knowledgeable assistant specializing in the US permit process. Always respond with ONLY a valid JSON object, without any markdown formatting, code blocks, or additional text.`;
 
     const response = await openai.responses.create({
@@ -374,19 +417,8 @@ export async function getProjectInfoFromFile(
         { role: "user", content },
       ],
     });
-        console.log("🚀 ~ getProjectInfoFromFile ~ content:", content)
 
-   // console.log("Assistant response:", response.output_text);
-
-  
     return response.output_text;
-
-    // If it's a string, try to parse it
-    
-    // Remove markdown code blocks if present
-    //const jsonText = rawText.replace(/```json\s*|\s*```/g, "").trim();
-
-
   } catch (error: any) {
     console.error("Error generating JSON response:", error.message);
     throw new Error(`Failed to generate JSON response: ${error.message}`);

@@ -5,7 +5,7 @@ import type { CreateProjectInput, UpdateProjectInput, ListProjectsFilters } from
 
 /**
  * POST /projects
- * Create a project (name, platformName?, email, password required, state, city).
+ * Create a project (name, email, password required, state, city).
  * Password: required only, no format validation. State+city must exist in catalog.
  */
 export const createProjectHandler = catchAsync(async (req, res) => {
@@ -18,15 +18,21 @@ export const createProjectHandler = catchAsync(async (req, res) => {
 
 /**
  * GET /projects
- * List projects with optional query: search, dateFrom, dateTo, status, page, limit (default 9).
+ * List projects: search, dateFilter (today | last_7_days | last_30_days), multi-select status, page, limit (default 9).
  * Returns paginated result: { data, total, page, limit, totalPages }.
  */
 export const getProjectsHandler = catchAsync(async (req, res) => {
+  const rawStatus = req.query.status;
+  const statusArray: string[] | undefined = rawStatus === undefined
+    ? undefined
+    : Array.isArray(rawStatus)
+      ? (rawStatus as string[]).flatMap((s) => String(s).split(',').map((t) => t.trim()).filter(Boolean))
+      : String(rawStatus).split(',').map((t) => t.trim()).filter(Boolean);
+
   const filters: ListProjectsFilters = {
     search: req.query.search as string | undefined,
-    dateFrom: req.query.dateFrom as string | undefined,
-    dateTo: req.query.dateTo as string | undefined,
-    status: req.query.status as ListProjectsFilters['status'],
+    dateFilter: req.query.dateFilter as ListProjectsFilters['dateFilter'],
+    status: statusArray?.length ? statusArray : undefined,
     page: req.query.page !== undefined ? Number(req.query.page) : undefined,
     limit: req.query.limit !== undefined ? Number(req.query.limit) : undefined,
   };

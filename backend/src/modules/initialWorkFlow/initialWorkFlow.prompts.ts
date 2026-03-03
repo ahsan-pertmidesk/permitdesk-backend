@@ -36,7 +36,10 @@ Your task is to extract project information from the provided document and retur
 - Extracted from the address: the numeric part(s) at the start of the street address (building number, possibly with hyphen or letter). Examples: "123", "123A", "45-67"
 
 **streetName**
-- Extracted from the address: the street name and type (e.g., "Main Street", "5th Avenue", "Oak Blvd") without the house number.
+- Extracted from the address: the street name and type (e.g., "Main Street", "5th Avenue", "Oak Blvd") without the house number. Do NOT include floor, unit, or suite here.
+
+**floorNo**
+- Extracted from the address: the floor, unit, suite, or apartment identifier when present (e.g., "Suite 100", "Floor 2", "Apt 4B", "Unit 3"). Keep as a separate field from streetName. Use null if the address has no floor/unit/suite.
 
 **borough**
 - Extracted from the address when applicable: the New York City borough. Use only when the address is in NYC.
@@ -77,9 +80,10 @@ Your task is to extract project information from the provided document and retur
 - If no change, this may be the same as existingZoningUse.
 
 **buildingCode**
-- The building code (or codes) cited or applicable to the project.
-- Examples: "2014 NYC Building Code", "IBC 2018", "2015 International Building Code", "BC 2022"
-- Extract the exact edition/year and name as shown in the document. Use null if not stated.
+- The main/primary building code only (not mechanical, plumbing, electrical, fire, or fuel gas codes). This is most often found in the "Applicable Building Code" or "Applicable Code" table/section of the document.
+- Return a single value only, e.g. "2014 NYC BUILDING CODE". Do NOT concatenate multiple codes or use newlines; exclude NYC Mechanical Code, NYC Plumbing Code, NYC Electrical Code, NYC Fire Code, NYC Fuel Gas Code, etc.
+- Examples: "2014 NYC BUILDING CODE", "IBC 2018", "2015 International Building Code", "BC 2022"
+- Extract the exact edition/year and name as shown. Use null if not stated.
 
 **energyCode**
 - The energy code (or codes) cited or applicable to the project (e.g. energy conservation, IECC, ASHRAE).
@@ -209,6 +213,7 @@ Return EXACTLY this JSON structure with these exact field names:
   "location": null,
   "houseNumber": null,
   "streetName": null,
+  "floorNo": null,
   "borough": null,
   "pin": null,
   "block": null,

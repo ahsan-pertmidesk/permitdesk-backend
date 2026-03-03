@@ -1,7 +1,6 @@
-/** Input for updating a project (name required; email, password, platformName optional) */
+/** Input for updating a project (name required; email, password optional) */
 export interface UpdateProjectInput {
   name: string;
-  platformName?: string;
   email?: string;
   password?: string;
 }
@@ -9,20 +8,19 @@ export interface UpdateProjectInput {
 /** Input for creating a project. Password is required (no format/length validation). */
 export interface CreateProjectInput {
   name: string;
-  platformName?: string;
   email: string;
   password: string;
   state: string;
   city: string;
 }
 
-/** Project response (create/update exclude email; list includes email) */
+/** Project response (create/update exclude email; list includes email). platformName stored from catalog on create, not editable. */
 export interface ProjectRecord {
   id: string;
   name: string;
-  platformName: string;
   state: string;
   city: string;
+  platformName: string;
   email?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -57,12 +55,14 @@ export interface ProjectApplicationItem {
   status: 'not_started' | 'in_progress' | 'under_review' | 'approved' | 'failed';
 }
 
+/** Date filter presets (no custom range) */
+export type DateFilterPreset = 'today' | 'last_7_days' | 'last_30_days';
+
 /** Query filters and pagination for list projects */
 export interface ListProjectsFilters {
   search?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  status?: 'not_started' | 'in_progress' | 'under_review' | 'approved' | 'failed';
+  dateFilter?: DateFilterPreset;
+  status?: string[]; /** multi-select: at least one application with status in this list */
   page?: number;
   limit?: number;
 }

@@ -58,16 +58,17 @@ function ensureNonEmptyNormalized(state: string, city: string): void {
 export async function upsertPermitApplication(
   input: CreatePermitApplicationInput
 ): Promise<PermitApplicationRecord> {
-  const { state, city, applicationNames } = input;
+  const { state, city, platformName = '', applicationNames } = input;
   const normalizedState = normalizeCityAndStateForStorage(state);
   const normalizedCity = normalizeCityAndStateForStorage(city);
 
   ensureNonEmptyNormalized(normalizedState, normalizedCity);
 
+  const platformNameTrimmed = (platformName ?? '').trim();
   const record = await PermitApplicationsCatalogQuery.upsert(
     { state_city: { state: normalizedState, city: normalizedCity } },
-    { state: normalizedState, city: normalizedCity, applicationNames },
-    { applicationNames, deletedAt: null }
+    { state: normalizedState, city: normalizedCity, platformName: platformNameTrimmed, applicationNames },
+    { applicationNames, platformName: platformNameTrimmed, deletedAt: null }
   );
   return record as PermitApplicationRecord;
 }
@@ -99,6 +100,28 @@ export async function getPermitApplicationByStateAndCity(
 }
 
 /**
+ * Get permit applications for multiple state+city pairs (e.g. for enriching project list).
+ * Returns records matching any of the pairs; state/city are used as-is (assume already normalized).
+ */
+export async function getPermitApplicationsByStateCityPairs(
+  pairs: { state: string; city: string }[]
+): Promise<PermitApplicationRecord[]> {
+  if (pairs.length === 0) return [];
+  const uniquePairs = Array.from(
+    new Map(pairs.map((p) => [`${p.state}|${p.city}`, p])).values()
+  );
+  const orConditions = uniquePairs.map((p) => ({
+    state: p.state,
+    city: p.city,
+    deletedAt: null,
+  }));
+  const list = await PermitApplicationsCatalogQuery.findMany({
+    OR: orConditions,
+  });
+  return list as PermitApplicationRecord[];
+}
+
+/**
  * Update application names for an existing state+city record (lookup uses normalized values).
  */
 export async function updatePermitApplication(
@@ -115,9 +138,12 @@ export async function updatePermitApplication(
     deletedAt: null,
   });
   if (!existing) return null;
+  const updatePayload: { applicationNames?: string[]; platformName?: string } = {};
+  if (input.applicationNames !== undefined) updatePayload.applicationNames = input.applicationNames;
+  if (input.platformName !== undefined) updatePayload.platformName = input.platformName.trim();
   const updated = await PermitApplicationsCatalogQuery.getByQueryAndUpdate(
     { id: existing.id },
-    { applicationNames: input.applicationNames }
+    updatePayload
   );
   return updated as PermitApplicationRecord;
 }

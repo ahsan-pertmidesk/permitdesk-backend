@@ -102,6 +102,7 @@ export interface DocumentExtractionResult {
   location: string | null;
   houseNumber: string | null;
   streetName: string | null;
+  floorNo: string | null;
   borough: Borough | null;
   pin: string | null;
   block: string | null;

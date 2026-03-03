@@ -20,7 +20,7 @@ const ProjectApplicationQuery = new DBQuery('ProjectApplication');
  * Multiple projects can use the same email; no duplicate-email check.
  */
 export async function createProject(input: CreateProjectInput): Promise<ProjectRecord> {
-  const { name, platformName = '', email, password, state, city } = input;
+  const { name, email, password, state, city } = input;
 
   const catalog = await getPermitApplicationByStateAndCity(state, city);
   if (!catalog) {
@@ -33,11 +33,11 @@ export async function createProject(input: CreateProjectInput): Promise<ProjectR
 
   const project = await ProjectQuery.createData({
     name,
-    platformName: (platformName ?? '').trim(),
     email,
     password,
     state: catalog.state,
     city: catalog.city,
+    platformName: (catalog.platformName ?? '').trim(),
   });
 
   const applicationRecords = catalog.applicationNames.map((appName) => ({
@@ -53,13 +53,13 @@ export async function createProject(input: CreateProjectInput): Promise<ProjectR
   return record as ProjectRecord;
 }
 
-/** Select for create/update responses (no email, no password) */
+/** Select for create/update responses (no email, no password). platformName stored, not editable. */
 const projectSelectForList = {
   id: true,
   name: true,
-  platformName: true,
   state: true,
   city: true,
+  platformName: true,
   createdAt: true,
   updatedAt: true,
   deletedAt: true,
@@ -75,11 +75,11 @@ const projectSelectForListWithEmail = {
 const projectSelectForGetById = {
   id: true,
   name: true,
-  platformName: true,
   email: true,
   password: true,
   state: true,
   city: true,
+  platformName: true,
   createdAt: true,
   updatedAt: true,
   deletedAt: true,
@@ -99,10 +99,9 @@ export async function updateProject(
   );
   if (!existing) return null;
 
-  const updateData: { name: string; platformName?: string; email?: string; password?: string } = {
+  const updateData: { name: string; email?: string; password?: string } = {
     name: input.name,
   };
-  if (input.platformName !== undefined) updateData.platformName = input.platformName.trim();
   if (input.email !== undefined) updateData.email = input.email.trim();
   if (input.password !== undefined) updateData.password = input.password;
 
@@ -112,7 +111,7 @@ export async function updateProject(
     undefined,
     projectSelectForList
   );
-  return updated as ProjectRecord;
+  return updated as ProjectRecord | null;
 }
 
 function mapToApplicationItem(app: { id: string; name: string; status: string }): ProjectApplicationItem {
@@ -124,7 +123,7 @@ function mapToApplicationItem(app: { id: string; name: string; status: string })
 }
 
 /**
- * Build where clause for list projects: search (name/email), date range, application status.
+ * Build where clause for list projects: search (name/email), dateFilter preset, multi-select status.
  */
 function buildListWhere(filters: ListProjectsFilters): Record<string, unknown> {
   const where: Record<string, unknown> = {};
@@ -135,19 +134,25 @@ function buildListWhere(filters: ListProjectsFilters): Record<string, unknown> {
       { email: { contains: term, mode: 'insensitive' } },
     ];
   }
-  if (filters.dateFrom || filters.dateTo) {
-    const createdAt: { gte?: Date; lte?: Date } = {};
-    if (filters.dateFrom) createdAt.gte = new Date(filters.dateFrom);
-    if (filters.dateTo) {
-      const d = new Date(filters.dateTo);
-      d.setHours(23, 59, 59, 999);
-      createdAt.lte = d;
+  if (filters.dateFilter) {
+    const now = new Date();
+    const start = new Date(now);
+    const end = new Date(now);
+    if (filters.dateFilter === 'today') {
+      start.setUTCHours(0, 0, 0, 0);
+      end.setUTCHours(23, 59, 59, 999);
+    } else if (filters.dateFilter === 'last_7_days') {
+      start.setDate(start.getDate() - 7);
+      start.setUTCHours(0, 0, 0, 0);
+    } else if (filters.dateFilter === 'last_30_days') {
+      start.setDate(start.getDate() - 30);
+      start.setUTCHours(0, 0, 0, 0);
     }
-    where.createdAt = createdAt;
+    where.createdAt = { gte: start, lte: end };
   }
-  if (filters.status) {
+  if (filters.status && filters.status.length > 0) {
     where.projectApplications = {
-      some: { status: filters.status, deletedAt: null },
+      some: { status: { in: filters.status }, deletedAt: null },
     };
   }
   return where;
@@ -227,11 +232,11 @@ export async function getProjectById(id: string): Promise<ProjectDetail | null> 
   return {
     id: p.id,
     name: p.name,
-    platformName: p.platformName ?? '',
     email: p.email,
     password: p.password ?? '',
     state: p.state,
     city: p.city,
+    platformName: p.platformName ?? '',
     applications: (p.projectApplications ?? []).map(mapToApplicationItem),
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,

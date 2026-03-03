@@ -214,6 +214,7 @@ model PermitApplicationsCatalog {
   id                 String   @id @default(uuid())
   city               String
   state              String
+  platformName       String   @default("")
   applicationNames   String[]
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -230,17 +231,17 @@ enum ProjectApplicationStatus {
 }
 
 model Project {
-  id                 String               @id @default(uuid())
-  name               String
-  platformName         String             @default("")
-  email              String
-  password           String
-  state              String
-  city               String
+  id                   String               @id @default(uuid())
+  name                 String
+  email                String
+  password             String
+  state                String
+  city                 String
+  platformName         String               @default("") // from catalog on create, not editable
   projectApplications ProjectApplication[]
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  deletedAt          DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  deletedAt            DateTime?
 }
 
 model ProjectApplication {

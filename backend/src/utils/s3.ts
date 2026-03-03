@@ -131,3 +131,20 @@ export const downloadFilePresignedUrl = async (fileKey: string): Promise<string>
 
   return await getSignedUrl(s3Client, command, { expiresIn: PRESIGNED_URL_TTL }); 
 };
+
+/** Download file from S3 and return as Buffer (for processing e.g. PDF page limit). */
+export const getFileBufferFromS3 = async (fileKey: string): Promise<Buffer> => {
+  if (!fileKey) throw new Error("File key is required");
+  const command = new GetObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: fileKey,
+  });
+  const response = await s3Client.send(command);
+  const body = response.Body;
+  if (!body) throw new Error("Empty file body from S3");
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of body as AsyncIterable<Uint8Array>) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+};
